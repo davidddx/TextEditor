@@ -5,7 +5,9 @@
 
 extern bool initializeLibraries(void); // initializes window, renderer, sdl library, etc. 
 extern void closeLibraries(void);
+/*
 extern SDL_Window* window; 
 extern SDL_Renderer* renderer;
 extern TTF_TextEngine* text_engine;
+*/
 #endif

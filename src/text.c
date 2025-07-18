@@ -1,4 +1,5 @@
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3/SDL.h>
 #include "text.h"
 #include "constants.h"
 #include <stdio.h>

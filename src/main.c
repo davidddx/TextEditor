@@ -17,6 +17,7 @@ bool initialize() {
                 return false;
         }
         SDL_Log("libraries initialized");
+        return true;
 }
 
 void close() {
@@ -25,6 +26,7 @@ void close() {
 }
 
 int main(void) {
+        SDL_InitSubSystem(SDL_INIT_VIDEO);
         if(!initialize()) {
                 return 1; // SDL application failed to INITIALIZE 
         }

@@ -22,7 +22,7 @@ $(NAME): $(OBJ)
 
 $(ODIR)/%.o: $(DEPS) 
 	mkdir -p $(call GET_PARENT_PATH,$(word 1,$(OBJ))) 
-	$(CC) -c -o $(word 1,$(OBJ)) $(word 1,$(CFILES)) $(CFLAGS)
+	$(CC) `pkg-config --cflags --libs $(LIBS)` -c -o $(word 1,$(OBJ)) $(word 1,$(CFILES)) $(CFLAGS)
 	$(eval CFILES=$(subst $(word 1,$(CFILES)),`,$(CFILES))) 
 	$(eval OBJ=$(subst $(word 1,$(OBJ)),`,$(OBJ))) 
 	$(eval CFILES=$(subst `,,$(CFILES))) 
