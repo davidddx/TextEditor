@@ -4,7 +4,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <stdbool.h>
 
-bool initializeLibraries(SDL_Window* w, SDL_Renderer* renderer, TTF_TextEngine* text_engine); // initializes window, renderer, sdl library, etc. 
-void closeLibraries(SDL_Window* w, SDL_Renderer* renderer, TTF_TextEngine* text_engine);
+bool initializeTextEditorLibraries(SDL_Window** w, SDL_Renderer** renderer, TTF_TextEngine** text_engine); // initializes window, renderer, sdl library, etc. 
+void textEditorCloseLibraries(SDL_Window* w, SDL_Renderer* renderer, TTF_TextEngine* text_engine);
 
 #endif

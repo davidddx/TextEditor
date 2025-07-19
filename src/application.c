@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "systems.h"
 
-void applicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_TextEngine* text_engine) {
+void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_TextEngine* text_engine) {
         TTF_Font* text_font = generateTextFont(FONT_SIZE, FONT_NAME);
         if(text_font == NULL) {
                 return;
