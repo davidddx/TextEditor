@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <SDL3/SDL.h>
 #include "logger/log_setup.h"
-#include "constants.h"
 #include "globals.h"
 FILE** log_files;
 void logFilesInit() {
@@ -163,7 +162,7 @@ SDL_LogOutputFunction logToFilesAndShell (void* a, int category, SDL_LogPriority
         return NULL; 
 }
 
-void loggingInit() {
+void applicationLoggingInit() {
         void* a;
         if(!LOGGING) {
                 SDL_SetLogOutputFunction((SDL_LogOutputFunction)doNoLogging, a);
@@ -173,7 +172,7 @@ void loggingInit() {
         SDL_SetLogOutputFunction((SDL_LogOutputFunction)logToFilesAndShell, a);
         SDL_Log("logging initialized.");
 }
-void loggingClose() {
+void applicationLoggingClose() {
         if(!LOGGING) {
                 return;
         }

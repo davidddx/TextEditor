@@ -1,18 +1,16 @@
-#include <SDL3/SDL.h>
-#include <SDL3_ttf/SDL_ttf.h>
 #include "application.h"
 #include "systems.h"
 #include "logger/log_setup.h"
 #include "globals.h"
 #include <stdbool.h>
-bool initialize() {
-        loggingInit();
-        if(!initializeGlobalsAndConstants()) {
-                SDL_Log("Could not initialize globals and constants. Exiting app");
+bool initializeTextEditorApp(SDL_Window* w, SDL_Renderer* r, TTF_TextEngine* t) {
+        applicationLoggingInit();
+        if(!initializeCWD()) {
+                SDL_Log("Could not initialize CWD. Exiting app...");
                 return false;
         }
-        SDL_Log("Globals and constants Initialized.");
-        if(!initializeLibraries()) {
+        SDL_Log("CWD %s Initialized.", CWD);
+        if(!initializeLibraries(w, r, t)) {
                 SDL_Log("Could not initialize libraries. Exiting app...");
                 return false;
         }
@@ -20,18 +18,20 @@ bool initialize() {
         return true;
 }
 
-void close() {
-        loggingClose();
-        closeLibraries();
+void closeTextEditorApp(SDL_Window* w, SDL_Renderer* r, TTF_TextEngine* t) {
+        applicationLoggingClose();
+        closeLibraries(w, r, t);
 }
 
 int main(void) {
-        SDL_InitSubSystem(SDL_INIT_VIDEO);
-        if(!initialize()) {
+        SDL_Window* w;
+        SDL_Renderer* r;
+        TTF_TextEngine* t;
+        if(!initializeTextEditorApp(w, r, t)) {
                 return 1; // SDL application failed to INITIALIZE 
         }
         SDL_Log("initialization done, going to application loop");
-        applicationLoop();
-        close(); 
+        applicationLoop(w, r, t);
+        closeTextEditorApp(w, r, t); 
         return 0;
 }

@@ -1,11 +1,8 @@
-#include <SDL3_ttf/SDL_ttf.h>
-#include <SDL3/SDL.h>
 #include "text.h"
-#include "constants.h"
 #include <stdio.h>
 #include "globals.h"
 int FONT_SIZE = 12;
-char* FONT_NAME = "CaskaydiaMonoNerdFontMono-Regular";
+char* FONT_NAME = "CaskaydiaMonoNerdFontMono-Regular.ttf";
 TTF_Font* generateTextFont(int size, char* font_name) {
         const int MAX_PATH_SIZE = 1000;
         const char* path = SDL_malloc(sizeof(char) * MAX_PATH_SIZE);

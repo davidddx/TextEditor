@@ -1,6 +1,6 @@
 #include "draw.h"
-#include <SDL3_ttf/SDL_ttf.h>
 #include <stdio.h> // included for sprintf use.
+#include <SDL3_ttf/SDL_ttf.h>
 color BACKGROUND_COLOR = {255, 255, 255, 255};
 color FPS_TEXT_COLOR = {0, 0, 0, 255};
 void drawStringAtToprightPos(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, const char* str, color c, SDL_FPoint topright) {

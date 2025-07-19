@@ -20,9 +20,9 @@ NAME=main
 $(NAME): $(OBJ)
 	$(CC) `pkg-config --cflags --libs $(LIBS)` -o $(NAME) $(OBJ_FILES) $(CFLAGS)
 
-$(ODIR)/%.o: $(DEPS) 
+$(ODIR)/%.o: $(DEPS) $(CFILES) 
 	mkdir -p $(call GET_PARENT_PATH,$(word 1,$(OBJ))) 
-	$(CC) `pkg-config --cflags --libs $(LIBS)` -c -o $(word 1,$(OBJ)) $(word 1,$(CFILES)) $(CFLAGS)
+	$(CC)  -c -o $(word 1,$(OBJ)) $(word 1,$(CFILES)) $(CFLAGS)
 	$(eval CFILES=$(subst $(word 1,$(CFILES)),`,$(CFILES))) 
 	$(eval OBJ=$(subst $(word 1,$(OBJ)),`,$(OBJ))) 
 	$(eval CFILES=$(subst `,,$(CFILES))) 
