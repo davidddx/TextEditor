@@ -20,7 +20,12 @@ void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_T
         uint64_t start_time = 0;
         uint64_t end_time = 0;
         uint64_t delta = 0;
-
+        int window_width;
+        int window_height;
+        SDL_GetWindowSizeInPixels(window, &window_width, 
+                        &window_height);
+        SDL_Surface* debug_surface = SDL_CreateSurface(window_width, window_height NULL);
+        TTF_TextEngine* debug_text_engine = TTF_CreateSurfaceTextEngine(debug_surface);
         while(running) {
                 if(start_time == 0) {
                         start_time = SDL_GetTicks();
@@ -34,23 +39,17 @@ void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_T
                 if(delta > ms_per_frame) {
                         fps = 1000.0f / (float)delta;  
                 }
-                int window_width;
-                int window_height;
                 SDL_GetWindowSizeInPixels(window, &window_width, 
                                 &window_height);
                 float width_scale_factor = (float)window_width/(float)ORIGINAL_WINDOW_WIDTH;
                 float height_scale_factor = (float)window_height/(float)ORIGINAL_WINDOW_HEIGHT;
                 
-                SDL_SetRenderScale(renderer, width_scale_factor, height_scale_factor);
                 SDL_RenderClear(renderer);
-                SDL_Log("FPS TEXT COLOR");
-                SDL_Log("{%dr, %dg, %db, %da}", FPS_TEXT_COLOR.r, FPS_TEXT_COLOR.g, FPS_TEXT_COLOR.b, FPS_TEXT_COLOR.a);
-                drawFpsText(renderer, text_engine, text_font, fps, FPS_TEXT_COLOR);
+                drawFpsText(debug_renderer, debug_text_engine, text_font, fps, FPS_TEXT_COLOR);
+                SDL_SetRenderScale(renderer, width_scale_factor, height_scale_factor);
                 SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
                 SDL_RenderPresent(renderer);
-                
-                start_time = end_time;
-                end_time = SDL_GetTicks();
+                SDL_RenderPresent(debug_renderer);
                 SDL_Event e;
                 while(SDL_PollEvent(&e)) {
                         switch(e.type) {
@@ -58,14 +57,20 @@ void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_T
                                         running = false;
                                         break;
                                 case SDL_EVENT_WINDOW_RESIZED:
+                                        SDL_Log("Resize event detected.");
                                         SDL_DestroyRenderer(renderer);
-                                        TTF_DestroyRendererTextEngine(text_engine);
+                                        SDL_DestroyRenderer(debug_renderer);
+                                        TTF_DestroyRendererTextEngine(debug_text_engine);
                                         renderer = SDL_CreateRenderer(window, NULL);
                                         text_engine = TTF_CreateRendererTextEngine(renderer);
+                                        debug_renderer = SDL_CreateRenderer(window, NULL);
+                                        debug_text_engine = TTF_CreateRendererTextEngine(debug_renderer);
                                         break;
 
                         }
                 }
+                start_time = end_time;
+                end_time = SDL_GetTicks();
                 
         }
  
