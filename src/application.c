@@ -29,6 +29,8 @@ void textEditorApplicationLoop(SDL_Window* window,
         SDL_GetWindowSizeInPixels(window, &window_width, 
                         &window_height);
         SDL_Texture* texture_to_render = SDL_CreateTexture(renderer, window_pixel_fmt, SDL_TEXTUREACCESS_TARGET, window_width, window_height);  
+        SDL_Log("original window size: %f, %f", window_width, window_height);
+        bool do_resizing = false;
         while(running) {
                 if(start_time == 0) {
                         start_time = SDL_GetTicks();
@@ -47,7 +49,8 @@ void textEditorApplicationLoop(SDL_Window* window,
                 float width_scale_factor = (float)window_width/(float)ORIGINAL_WINDOW_WIDTH;
                 float height_scale_factor = (float)window_height/(float)ORIGINAL_WINDOW_HEIGHT;
                 SDL_RenderClear(renderer);
-                SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
+                SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, 
+                                BACKGROUND_COLOR.a);
                 drawFpsText(renderer, texture_to_render, text_engine, text_font, fps, FPS_TEXT_COLOR);
                 SDL_RenderTexture(renderer, texture_to_render, NULL, NULL);
                 SDL_RenderPresent(renderer);
@@ -59,15 +62,20 @@ void textEditorApplicationLoop(SDL_Window* window,
                                         break;
                                 case SDL_EVENT_WINDOW_RESIZED:
                                         SDL_Log("Resize event detected.");
-                                        SDL_DestroyTexture(texture_to_render);
+                                        SDL_GetWindowSizeInPixels(window, &window_width, 
+                                                                        &window_height);
+
                                         SDL_DestroyRenderer(renderer);
+                                        SDL_DestroyTexture(texture_to_render);
                                         renderer = SDL_CreateRenderer(window, NULL);
-                                        texture_to_render = SDL_CreateTexture(renderer, window_pixel_fmt, SDL_TEXTUREACCESS_TARGET, window_width, window_height);  
+                                        text_engine = TTF_CreateRendererTextEngine(renderer);
+                                        texture_to_render = SDL_CreateTexture(renderer, window_pixel_fmt, 
+                                                        SDL_TEXTUREACCESS_TARGET, window_width, window_height);  
                                         float texture_width;
                                         float texture_height;
                                         SDL_GetTextureSize(texture_to_render, &texture_width, &texture_height);
                                         SDL_Log("texture size: %f, %f", texture_width, texture_height);
-                                        text_engine = TTF_CreateRendererTextEngine(renderer);
+                                        SDL_Log("window width: %f, %f", window_width, window_height);
                                         break;
 
                         }
