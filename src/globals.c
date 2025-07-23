@@ -16,6 +16,21 @@ char* APPLICATION_TITLE = "NOTES";
 char* CWD = NULL;
 int CWD_MAX_SIZE = 1000;
 int MAX_FPS = 60;
+int DESKTOP_WIDTH = 0;
+int DESKTOP_HEIGHT = 0;
+
+bool initializeDesktopSizes(SDL_Window** window_pointer) {
+        SDL_DisplayID current_display_id = SDL_GetPrimaryDisplay();
+        SDL_DisplayMode* current_desktop_display_mode = SDL_GetCurrentDisplayMode(current_display_id);
+        if(current_desktop_display_mode == NULL) {
+                SDL_Log("Error getting current desktop display mode: %s", SDL_GetError()); 
+                return false;
+        }
+        DESKTOP_WIDTH = current_desktop_display_mode->w;
+        DESKTOP_HEIGHT = current_desktop_display_mode->h;
+        SDL_Log("Desktop size: %d, %d", DESKTOP_WIDTH, DESKTOP_HEIGHT);
+        return true;
+}
 
 bool initializeCWD() {
         CWD = getcwd(CWD, CWD_MAX_SIZE);
@@ -27,3 +42,16 @@ bool initializeCWD() {
         SDL_Log("Fetched cwd: %s", CWD);
         return SUCCEEDED_INITIALIZING;
 }
+
+bool initializeTextEditorGlobals(SDL_Window** window_pointer) {
+        if(!initializeDesktopSizes(window_pointer)) {
+                SDL_Log("Could not initialize globals: failed to get Desktop sizes");
+                return false;
+        }
+        if (!initializeCWD()) {
+                SDL_Log("Could not initialize globals: failed to get current working directory");
+                return false;
+        }
+        return true;
+}
+

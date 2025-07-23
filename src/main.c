@@ -2,16 +2,22 @@
 #include "systems.h"
 #include "logger/log_setup.h"
 #include "globals.h"
+#include "text.h"
 #include <stdbool.h>
 bool initializeTextEditorApp(SDL_Window** w, SDL_Renderer** r, TTF_TextEngine** t) {
         applicationLoggingInit();
-        if(!initializeCWD()) {
-                SDL_Log("Could not initialize CWD. Exiting app...");
-                return false;
-        }
+
         SDL_Log("CWD %s Initialized.", CWD);
         if(!initializeTextEditorLibraries(w, r, t)) {
                 SDL_Log("Could not initialize libraries. Exiting app...");
+                return false;
+        }
+        if(!initializeTextEditorGlobals(w)) {
+                SDL_Log("Could not initialize global variables. Exiting app...");
+                return false;
+        }
+        if(!initializeTextEditorFont()) {
+                SDL_Log("Could not initialize font. Exiting app...");
                 return false;
         }
         SDL_Log("libraries initialized");

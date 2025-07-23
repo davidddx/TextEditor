@@ -4,7 +4,8 @@
 #include <SDL3_ttf/SDL_ttf.h>
 color BACKGROUND_COLOR = {255, 255, 255, 255};
 color FPS_TEXT_COLOR = {0, 0, 0, 255};
-void drawStringAtToprightPos(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, const char* str, color c, SDL_FPoint topright) {
+void drawStringAtToprightPos(SDL_Renderer* r, TTF_TextEngine* e, 
+                TTF_Font* f, const char* str, color c, SDL_FPoint topright) {
         TTF_Text* t = TTF_CreateText(e, f, str, strlen(str));
         TTF_SetTextColor(t, c.r, c.g, c.b, c.a);
         int tW;
@@ -14,7 +15,8 @@ void drawStringAtToprightPos(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, co
         TTF_DestroyText(t);
 }
 
-void drawStringAtMiddlePos(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, const char* str, color c, SDL_FPoint topright) {
+void drawStringAtMiddlePos(SDL_Renderer* r, TTF_TextEngine* e, 
+                TTF_Font* f, const char* str, color c, SDL_FPoint topright) {
         TTF_Text* t = TTF_CreateText(e, f, str, strlen(str));
         TTF_SetTextColor(t, c.r, c.g, c.b, c.a);
         int tW;
@@ -25,7 +27,8 @@ void drawStringAtMiddlePos(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, cons
 }
 
 
-void drawFpsText(SDL_Renderer* renderer, SDL_Texture* texture, TTF_TextEngine* engine, TTF_Font* font, 
+void drawFpsText(SDL_Renderer* renderer, SDL_Texture* texture, 
+                TTF_TextEngine* engine, TTF_Font* font, 
                 float fps, color text_color) {
         
         int maxFpsStrlen = 20; // rough overestimate

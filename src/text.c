@@ -1,12 +1,37 @@
 #include "text.h"
 #include <stdio.h>
 #include "globals.h"
-int FONT_SIZE = 12;
-char* FONT_NAME = "CaskaydiaMonoNerdFontMono-Regular.ttf";
-TTF_Font* generateTextFont(int size, char* font_name) {
+float FONT_SIZE = 12;
+float DEBUG_FONT_SIZE = 0; // set in initializeTextEditorFont.
+char* DEBUG_FONT_NAME = "CaskaydiaMonoNerdFontMono-Regular.ttf";
+
+// need to free returned string after use.
+char* getTextFontPath(char* cwd, char* directory_separator, char* dir_name, char* font_name) {
         const int MAX_PATH_SIZE = 1000;
         const char* path = SDL_malloc(sizeof(char) * MAX_PATH_SIZE);
-        sprintf(path, "%s%s%s%s%s", CWD, DIRECTORY_SEPARATOR, "fonts", DIRECTORY_SEPARATOR, font_name);
+        sprintf(path, "%s%s%s%s%s", cwd, directory_separator, dir_name, directory_separator, font_name);
+        return path;
+}
+
+
+bool initializeTextEditorFont() {
+        // initializing font size using fact 
+        // 1 pt = 1.333333333 pixels
+        float desired_fps_text_pixels = (float)DESKTOP_HEIGHT/12.0f; // proportion for fps text im sticking to
+        SDL_Log("desired fps text pixels: %f", desired_fps_text_pixels);
+        DEBUG_FONT_SIZE = desired_fps_text_pixels / 1.33333f; // relatinoship b/t pt && pixels.
+        SDL_Log("Desktop height: %d", DESKTOP_HEIGHT);
+        SDL_Log("DEBUG_FONT_SIZE: %f", DEBUG_FONT_SIZE);
+        return true;
+}
+
+
+
+TTF_Font* generateTextFont(int size, char* font_name) {
+        const int MAX_PATH_SIZE = 1000;
+        const char* path = getTextFontPath(CWD, DIRECTORY_SEPARATOR, "fonts", font_name);
+        //const char* path = SDL_malloc(sizeof(char) * MAX_PATH_SIZE);
+        //sprintf(path, "%s%s%s%s%s", CWD, DIRECTORY_SEPARATOR, "fonts", DIRECTORY_SEPARATOR, font_name);
         SDL_Log("generating text font...");
         SDL_Log("FONT PATH: %s", path);
         SDL_Log("font_size: %d", size);
