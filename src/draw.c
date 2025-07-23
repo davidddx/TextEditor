@@ -24,20 +24,26 @@ void drawStringAtMiddlePos(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, cons
         TTF_DestroyText(t);
 }
 
-void drawFpsText(SDL_Renderer* r, SDL_Surface* s, TTF_TextEngine* e, TTF_Font* f, 
-                float fps, color c) {
+
+void drawFpsText(SDL_Renderer* renderer, SDL_Texture* texture, TTF_TextEngine* engine, TTF_Font* font, 
+                float fps, color text_color) {
+        
         int maxFpsStrlen = 20; // rough overestimate
         char* strfps = SDL_malloc(sizeof(char) * maxFpsStrlen);
         sprintf(strfps, "FPS: %f", fps);
-        TTF_Text* t = TTF_CreateText(e, f, strfps, strlen(strfps));
-        TTF_SetTextColor(t, c.r, c.g, c.b, c.a);
-        TTF_DrawSurfaceText(t, 0, 0);
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(r, s);
-        float tex_width;
-        float text_height;
-        SDL_GetTextureSize(texture, &tex_width, &tex_height);
-        SDL_FRect resulting_rect = {ORIGINAL_WINDOW_WIDTH - s->w, ORIGINAL_WINDOW_HEIGHT - s->h , s->w, s->h};
-        SDL_RenderTexture(r, texture, NULL, resulting_rect);  
-        TTF_DestroyText(t);
+        //SDL_Log("color: {%d %d %d %d}", text_color.r, text_color.g, text_color.b, text_color.a);
+        SDL_SetRenderTarget(renderer, texture);
+        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
+        TTF_Text* font_text = TTF_CreateText(engine, font, strfps, strlen(strfps));
+        TTF_SetTextColor(font_text, text_color.r, text_color.g, text_color.b, text_color.a);
+        /*
+        float texture_width;
+        float texture_height;
+        SDL_GetTextureSize(texture, texture_width, texture_height);
+        */
+        TTF_DrawRendererText(font_text, 0, 0);
+        SDL_SetRenderTarget(renderer, NULL);
+        TTF_DestroyText(font_text);
         SDL_free(strfps);
 }

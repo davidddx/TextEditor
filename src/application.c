@@ -5,7 +5,11 @@
 #include <stdint.h>
 #include "systems.h"
 
-void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_TextEngine* text_engine) {
+void textEditorApplicationLoop(SDL_Window* window, 
+                SDL_Renderer* renderer, TTF_TextEngine* text_engine) {
+        SDL_PixelFormat window_pixel_fmt = SDL_GetWindowPixelFormat(window); 
+        SDL_Log("WINDOW PIXEL FORMAT: %s", SDL_GetPixelFormatName(window_pixel_fmt));
+        int formats_idx = 0;
         TTF_Font* text_font = generateTextFont(FONT_SIZE, FONT_NAME);
         if(text_font == NULL) {
                 return;
@@ -24,8 +28,7 @@ void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_T
         int window_height;
         SDL_GetWindowSizeInPixels(window, &window_width, 
                         &window_height);
-        SDL_Surface* debug_surface = SDL_CreateSurface(window_width, window_height NULL);
-        TTF_TextEngine* debug_text_engine = TTF_CreateSurfaceTextEngine(debug_surface);
+        SDL_Texture* texture_to_render = SDL_CreateTexture(renderer, window_pixel_fmt, SDL_TEXTUREACCESS_TARGET, window_width, window_height);  
         while(running) {
                 if(start_time == 0) {
                         start_time = SDL_GetTicks();
@@ -43,13 +46,11 @@ void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_T
                                 &window_height);
                 float width_scale_factor = (float)window_width/(float)ORIGINAL_WINDOW_WIDTH;
                 float height_scale_factor = (float)window_height/(float)ORIGINAL_WINDOW_HEIGHT;
-                
                 SDL_RenderClear(renderer);
-                drawFpsText(debug_renderer, debug_text_engine, text_font, fps, FPS_TEXT_COLOR);
-                SDL_SetRenderScale(renderer, width_scale_factor, height_scale_factor);
                 SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
+                drawFpsText(renderer, texture_to_render, text_engine, text_font, fps, FPS_TEXT_COLOR);
+                SDL_RenderTexture(renderer, texture_to_render, NULL, NULL);
                 SDL_RenderPresent(renderer);
-                SDL_RenderPresent(debug_renderer);
                 SDL_Event e;
                 while(SDL_PollEvent(&e)) {
                         switch(e.type) {
@@ -58,13 +59,15 @@ void textEditorApplicationLoop(SDL_Window* window, SDL_Renderer* renderer, TTF_T
                                         break;
                                 case SDL_EVENT_WINDOW_RESIZED:
                                         SDL_Log("Resize event detected.");
+                                        SDL_DestroyTexture(texture_to_render);
                                         SDL_DestroyRenderer(renderer);
-                                        SDL_DestroyRenderer(debug_renderer);
-                                        TTF_DestroyRendererTextEngine(debug_text_engine);
                                         renderer = SDL_CreateRenderer(window, NULL);
+                                        texture_to_render = SDL_CreateTexture(renderer, window_pixel_fmt, SDL_TEXTUREACCESS_TARGET, window_width, window_height);  
+                                        float texture_width;
+                                        float texture_height;
+                                        SDL_GetTextureSize(texture_to_render, &texture_width, &texture_height);
+                                        SDL_Log("texture size: %f, %f", texture_width, texture_height);
                                         text_engine = TTF_CreateRendererTextEngine(renderer);
-                                        debug_renderer = SDL_CreateRenderer(window, NULL);
-                                        debug_text_engine = TTF_CreateRendererTextEngine(debug_renderer);
                                         break;
 
                         }

@@ -11,5 +11,6 @@ typedef struct {
 } color;
 extern color BACKGROUND_COLOR;
 extern color FPS_TEXT_COLOR;
-void drawFpsText(SDL_Renderer* r, TTF_TextEngine* e, TTF_Font* f, float fps, color c);
+
+void drawFpsText(SDL_Renderer* renderer, SDL_Texture* texture, TTF_TextEngine* e, TTF_Font* f, float fps, color c);
 #endif
