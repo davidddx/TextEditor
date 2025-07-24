@@ -7,5 +7,5 @@ typedef struct {
         int desktop_width;
         int desktop_height;
 
-} Debug_Info;
+} DebugInfo;
 #endif

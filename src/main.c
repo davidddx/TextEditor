@@ -7,7 +7,6 @@
 bool initializeTextEditorApp(SDL_Window** w, SDL_Renderer** r, TTF_TextEngine** t) {
         applicationLoggingInit();
 
-        SDL_Log("CWD %s Initialized.", CWD);
         if(!initializeTextEditorLibraries(w, r, t)) {
                 SDL_Log("Could not initialize libraries. Exiting app...");
                 return false;

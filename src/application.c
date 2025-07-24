@@ -15,9 +15,9 @@ void textEditorApplicationLoop(SDL_Window* window,
                 SDL_Log("Could not generate debug text font: %s", SDL_GetError());
                 return;
         }
-        Debug_Info application_debug_info;
+        DebugInfo application_debug_info;
+
         SDL_Log("Generated ttf font");
-        bool running = true;
         // s per frame is 1/60 for 60 fps.
         // ms per frame is 1000 * s per frame.
         float ms_per_frame = 1000.0f/(float)MAX_FPS; // 
@@ -25,17 +25,29 @@ void textEditorApplicationLoop(SDL_Window* window,
         uint64_t start_time = 0;
         uint64_t end_time = 0;
         uint64_t delta = 0;
-        application_debug_info.fps = fps;
         int window_width = ORIGINAL_WINDOW_WIDTH;
         int window_height = ORIGINAL_WINDOW_HEIGHT;
+        application_debug_info.fps = fps;
         application_debug_info.window_width = window_width;
         application_debug_info.window_height = window_height;
         application_debug_info.desktop_width = DESKTOP_WIDTH;
         application_debug_info.desktop_height = DESKTOP_HEIGHT;
+
         SDL_Texture* debug_info_texture = SDL_CreateTexture(renderer, 
                         window_pixel_fmt, SDL_TEXTUREACCESS_TARGET, 
                         window_width, window_height);  
-        SDL_Log("debug info: original window size: %d, %d", window_width, window_height);
+
+        ObjectDrawingInfo debug_drawing_info;
+        TextDrawingInfo debug_text_drawing_info;
+        debug_text_drawing_info.drawing_info = &debug_drawing_info; 
+        debug_text_drawing_info.text_engine = text_engine;
+        debug_text_drawing_info.font = debug_text_font;
+        debug_drawing_info.renderer = renderer;
+        debug_drawing_info.texture = debug_info_texture;
+        debug_drawing_info.x = 0;
+        debug_drawing_info.y = 0;
+        debug_drawing_info.object_color = DEBUG_TEXT_COLOR; 
+        bool running = true;
         while(running) {
                 if(start_time == 0) {
                         start_time = SDL_GetTicks();
@@ -54,9 +66,7 @@ void textEditorApplicationLoop(SDL_Window* window,
                 SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g,
                                 BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
                 
-                if(!drawDebugInfo(renderer, debug_info_texture, text_engine,
-                                debug_text_font, &application_debug_info, 
-                                FPS_TEXT_COLOR)) {
+                if(!drawDebugInfo(&debug_text_drawing_info, &application_debug_info)) {
                         SDL_Log("Could not draw debug info: %s", SDL_GetError()); 
                 }
                 SDL_RenderTexture(renderer, debug_info_texture, NULL, NULL);
@@ -78,7 +88,11 @@ void textEditorApplicationLoop(SDL_Window* window,
                                         renderer = SDL_CreateRenderer(window, NULL);
                                         text_engine = TTF_CreateRendererTextEngine(renderer);
                                         debug_info_texture = SDL_CreateTexture(renderer, window_pixel_fmt, 
-                                                        SDL_TEXTUREACCESS_TARGET, window_width, window_height);  
+                                                        SDL_TEXTUREACCESS_TARGET, window_width, 
+                                                        window_height);  
+                                        debug_drawing_info.texture = debug_info_texture; 
+                                        debug_drawing_info.renderer = renderer;
+                                        debug_text_drawing_info.text_engine = text_engine;
 
                                         break;
                                 case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
