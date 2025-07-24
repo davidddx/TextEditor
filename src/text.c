@@ -17,11 +17,8 @@ char* getTextFontPath(char* cwd, char* directory_separator, char* dir_name, char
 bool initializeTextEditorFont() {
         // initializing font size using fact 
         // 1 pt = 1.333333333 pixels
-        float desired_fps_text_pixels = (float)DESKTOP_HEIGHT/12.0f; // proportion for fps text im sticking to
-        SDL_Log("desired fps text pixels: %f", desired_fps_text_pixels);
+        float debug_text_pixels = (float)DESKTOP_HEIGHT/12.0f; // proportion for debug text im sticking to
         DEBUG_FONT_SIZE = desired_fps_text_pixels / 1.33333f; // relatinoship b/t pt && pixels.
-        SDL_Log("Desktop height: %d", DESKTOP_HEIGHT);
-        SDL_Log("DEBUG_FONT_SIZE: %f", DEBUG_FONT_SIZE);
         return true;
 }
 
