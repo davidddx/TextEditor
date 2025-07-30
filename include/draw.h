@@ -27,6 +27,7 @@ typedef struct {
 
 extern color BACKGROUND_COLOR;
 extern color DEBUG_TEXT_COLOR;
+extern color APPLICATION_TEXT_COLOR;
 
 /*
 bool drawDebugInfo(SDL_Renderer* renderer, SDL_Texture* texture, 

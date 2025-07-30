@@ -3,6 +3,7 @@
 #include "logger/log_setup.h"
 #include "globals.h"
 #include "text.h"
+#include "cursor.h"
 #include <stdbool.h>
 bool initializeTextEditorApp(SDL_Window** w, SDL_Renderer** r, TTF_TextEngine** t) {
         applicationLoggingInit();
@@ -11,15 +12,21 @@ bool initializeTextEditorApp(SDL_Window** w, SDL_Renderer** r, TTF_TextEngine** 
                 SDL_Log("Could not initialize libraries. Exiting app...");
                 return false;
         }
+        SDL_Log("libraries initialized");
         if(!initializeTextEditorGlobals(w)) {
                 SDL_Log("Could not initialize global variables. Exiting app...");
                 return false;
         }
+        SDL_Log("globals initialized");
         if(!initializeTextEditorFont()) {
                 SDL_Log("Could not initialize font. Exiting app...");
                 return false;
         }
-        SDL_Log("libraries initialized");
+        SDL_Log("font initialized");
+        if(!initializeCursor()) {
+                SDL_Log("Could not initialize cursor. Exiting app...");
+                SDL_Log("cursor initialized");
+        }
         return true;
 }
 

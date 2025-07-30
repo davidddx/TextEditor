@@ -5,12 +5,12 @@
 #include <stdint.h>
 #include "systems.h"
 #include "debug.h"
-
+#include "cursor.h"
 void textEditorApplicationLoop(SDL_Window* window, 
                 SDL_Renderer* renderer, TTF_TextEngine* text_engine) {
         SDL_PixelFormat window_pixel_fmt = SDL_GetWindowPixelFormat(window); 
         SDL_Log("WINDOW PIXEL FORMAT: %s", SDL_GetPixelFormatName(window_pixel_fmt));
-        TTF_Font* debug_text_font = generateTextFont(DEBUG_FONT_SIZE, DEBUG_FONT_NAME);
+        TTF_Font* debug_text_font = generateTextTTFFont(DEBUG_FONT_SIZE, DEBUG_FONT_NAME);
         if(debug_text_font == NULL) {
                 SDL_Log("Could not generate debug text font: %s", SDL_GetError());
                 return;
@@ -27,6 +27,7 @@ void textEditorApplicationLoop(SDL_Window* window,
         uint64_t delta = 0;
         int window_width = ORIGINAL_WINDOW_WIDTH;
         int window_height = ORIGINAL_WINDOW_HEIGHT;
+        // debug initialization stuff begins here,
         application_debug_info.fps = fps;
         application_debug_info.window_width = window_width;
         application_debug_info.window_height = window_height;
@@ -47,7 +48,22 @@ void textEditorApplicationLoop(SDL_Window* window,
         debug_drawing_info.x = 0;
         debug_drawing_info.y = 0;
         debug_drawing_info.object_color = DEBUG_TEXT_COLOR; 
+        // debug initializing stuff ends here
+        // application text texture is where stuff is written.
+        SDL_Texture* application_texture = SDL_CreateTexture(renderer, 
+                        window_pixel_fmt, SDL_TEXTUREACCESS_TARGET, 
+                        window_width, window_height);
+
+        ObjectDrawingInfo text_editor_drawing_info;
+        text_editor_drawing_info.renderer = renderer;
+        text_editor_drawing_info.texture  = application_texture;
+        text_editor_drawing_info.x = 0;
+        text_editor_drawing_info.y = 0;
+        text_editor_drawing_info.object_color = APPLICATION_TEXT_COLOR; 
+
         bool running = true;
+        SDL_StartTextInput(window);
+        char* curr_str = SDL_malloc(sizeof(char) * MAX_TEXT_LENGTH_PER_FRAME);
         while(running) {
                 if(start_time == 0) {
                         start_time = SDL_GetTicks();
@@ -61,19 +77,10 @@ void textEditorApplicationLoop(SDL_Window* window,
                 if(delta > ms_per_frame) {
                         fps = 1000.0f / (float)delta;  
                 }
-                application_debug_info.fps = fps;
-                SDL_RenderClear(renderer);
-                SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g,
-                                BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
-                
-                if(!drawDebugInfo(&debug_text_drawing_info, &application_debug_info)) {
-                        SDL_Log("Could not draw debug info: %s", SDL_GetError()); 
-                }
-                SDL_RenderTexture(renderer, debug_info_texture, NULL, NULL);
-                SDL_RenderPresent(renderer);
-                SDL_Event e;
-                while(SDL_PollEvent(&e)) {
-                        switch(e.type) {
+
+                SDL_Event current_event;
+                while(SDL_PollEvent(&current_event)) {
+                        switch(current_event.type) {
                                 case SDL_EVENT_QUIT:
                                         running = false;
                                         break;
@@ -90,6 +97,12 @@ void textEditorApplicationLoop(SDL_Window* window,
                                         debug_info_texture = SDL_CreateTexture(renderer, window_pixel_fmt, 
                                                         SDL_TEXTUREACCESS_TARGET, window_width, 
                                                         window_height);  
+                                        SDL_DestroyTexture(application_texture);
+                                        application_texture = SDL_CreateTexture(renderer, window_pixel_fmt, 
+                                                        SDL_TEXTUREACCESS_TARGET, window_width, 
+                                                        window_height);
+                                        text_editor_drawing_info.texture = application_texture;
+                                        text_editor_drawing_info.renderer = renderer;
                                         debug_drawing_info.texture = debug_info_texture; 
                                         debug_drawing_info.renderer = renderer;
                                         debug_text_drawing_info.text_engine = text_engine;
@@ -104,11 +117,30 @@ void textEditorApplicationLoop(SDL_Window* window,
                                         application_debug_info.desktop_height = DESKTOP_HEIGHT;
                                         SDL_Log("Display moved");
                                         break;
-
+                                case SDL_EVENT_TEXT_INPUT:
+                                        // text input event means the event has text.
+                                        // refer to struct SDL_TextInputEvent.
+                                        SDL_Log("Input: %s", current_event.text.text);
+                                        break;
                         }
                 }
+                application_debug_info.fps = fps;
+                SDL_RenderClear(renderer);
+
+                updateCursor(&text_editor_drawing_info); 
+                //debug stuff
+                SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g,
+                                BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); 
+                if(!drawDebugInfo(&debug_text_drawing_info, &application_debug_info)) {
+                        SDL_Log("Could not draw debug info: %s", SDL_GetError()); 
+                }
+                // updating texture stuff.
+                SDL_RenderTexture(renderer, debug_info_texture, NULL, NULL);
+                SDL_RenderPresent(renderer);
                 start_time = end_time;
                 end_time = SDL_GetTicks();
+                //SDL_free(curr_str);
                 
         }
  

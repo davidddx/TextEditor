@@ -5,6 +5,7 @@ float FONT_SIZE = 12;
 float DEBUG_FONT_SIZE = 0; // set in initializeTextEditorFont.
 char* DEBUG_FONT_NAME = "CaskaydiaMonoNerdFontMono-Regular.ttf";
 float PIXELS_IN_ONE_PT = 1.3333333333f;
+unsigned int MAX_TEXT_LENGTH_PER_FRAME = 100; 
 
 // need to free returned string after use.
 char* getTextFontPath(char* cwd, char* directory_separator, char* dir_name, char* font_name) {
@@ -18,14 +19,14 @@ char* getTextFontPath(char* cwd, char* directory_separator, char* dir_name, char
 bool initializeTextEditorFont() {
         // initializing font size using fact 
         // 1 pt = 1.333333333 pixels
-        float debug_text_pixels = (float)DESKTOP_HEIGHT/12.0f; // proportion for debug text im sticking to
+        float debug_text_pixels = (float)DESKTOP_HEIGHT/20.0f; // proportion for debug text im sticking to
         DEBUG_FONT_SIZE = debug_text_pixels / PIXELS_IN_ONE_PT; // relatinoship b/t pt && pixels.
         return true;
 }
 
 
 
-TTF_Font* generateTextFont(int size, char* font_name) {
+TTF_Font* generateTextTTFFont(int size, char* font_name) {
         const int MAX_PATH_SIZE = 1000;
         const char* path = getTextFontPath(CWD, DIRECTORY_SEPARATOR, "fonts", font_name);
         //const char* path = SDL_malloc(sizeof(char) * MAX_PATH_SIZE);
