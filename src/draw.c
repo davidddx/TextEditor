@@ -8,6 +8,49 @@ color BACKGROUND_COLOR = {255, 255, 255, 255};
 color DEBUG_TEXT_COLOR = {0, 0, 0, 255};
 color APPLICATION_TEXT_COLOR = {0, 0, 0, 255}; // plan to make this customizable 
 
+
+bool drawTTFText(TextDrawingInfo* draw_info, TTF_Text* font_text) 
+{
+        TTF_SetTextColor(font_text, draw_info->drawing_info->object_color.r, 
+                        draw_info->drawing_info->object_color.g, 
+                        draw_info->drawing_info->object_color.b, 
+                        draw_info->drawing_info->object_color.a);
+        TTF_DrawRendererText(font_text, draw_info->drawing_info->x, 
+                        draw_info->drawing_info->y);
+        TTF_DestroyText(font_text);
+        return true; 
+}
+
+bool drawText(TextDrawingInfo* draw_info, char* text) 
+{
+        TTF_Text* font_text = TTF_CreateText(draw_info->text_engine, 
+                        draw_info->font, text, strlen(text));
+        drawTTFText(draw_info, font_text);
+        return true;
+}
+
+bool drawTextAtTopMiddle(TextDrawingInfo* draw_info, char* text) 
+{
+        TTF_Text* font_text = TTF_CreateText(draw_info->text_engine, 
+                        draw_info->font, text, strlen(text));
+        ObjectDrawingInfo new_object_draw_info;
+        TextDrawingInfo new_text_draw_info;
+        new_object_draw_info.renderer = draw_info->drawing_info->renderer;
+        new_object_draw_info.texture = draw_info->drawing_info->texture;
+        new_object_draw_info.object_color = draw_info->drawing_info->object_color;
+        int text_width;
+        int text_height;
+        TTF_GetTextSize(font_text, &text_width, &text_height);
+        SDL_Log("text width: %d", text_width);
+        new_object_draw_info.x = draw_info->drawing_info->x - (float)text_width/2.0f; 
+        new_object_draw_info.y = draw_info->drawing_info->y; 
+        new_text_draw_info.drawing_info = &new_object_draw_info;
+        new_text_draw_info.text_engine = draw_info->text_engine;
+        new_text_draw_info.font = draw_info->font;
+        drawTTFText(draw_info, font_text);
+        return true;
+}
+
 bool drawFpsText(TextDrawingInfo* draw_info, 
                 float fps) 
 {
@@ -83,9 +126,10 @@ bool drawDebugInfo(TextDrawingInfo* text_drawing_info, DebugInfo* debug_info)
         {
                 return false;
         }
+        int debug_opacity = 100;
         if(!SDL_SetTextureAlphaMod(
                                 text_drawing_info->drawing_info->texture, 
-                                100)) 
+                                debug_opacity)) 
         {
                 return false;
         }
@@ -100,7 +144,7 @@ bool drawDebugInfo(TextDrawingInfo* text_drawing_info, DebugInfo* debug_info)
                                 SDL_GetError());
         }
         text_drawing_info->drawing_info->y += 
-                TTF_GetFontSize(text_drawing_info->font) * PIXELS_IN_ONE_PT;
+                TTF_GetFontSize(text_drawing_info->font);
         if(!drawResolutionText(text_drawing_info, debug_info->desktop_width, 
                                 debug_info->desktop_height)) 
         {
@@ -108,7 +152,7 @@ bool drawDebugInfo(TextDrawingInfo* text_drawing_info, DebugInfo* debug_info)
                                 SDL_GetError());
         }
         text_drawing_info->drawing_info->y += 
-                TTF_GetFontSize(text_drawing_info->font) * PIXELS_IN_ONE_PT;
+                TTF_GetFontSize(text_drawing_info->font); 
         if(!drawWindowSizeText(text_drawing_info, debug_info->window_width, debug_info->window_height)) 
         {
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not draw Window Size text: %s", 
@@ -117,7 +161,7 @@ bool drawDebugInfo(TextDrawingInfo* text_drawing_info, DebugInfo* debug_info)
         text_drawing_info->drawing_info->x = original_x;
         text_drawing_info->drawing_info->y = original_y;
         SDL_SetRenderTarget(text_drawing_info->drawing_info->renderer, NULL);
-
+        return true;
 
 
 }

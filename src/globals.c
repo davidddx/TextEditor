@@ -18,6 +18,7 @@ int CWD_MAX_SIZE = 1000;
 int MAX_FPS = 60;
 int DESKTOP_WIDTH = 0;
 int DESKTOP_HEIGHT = 0;
+bool TESTING = true;
 
 bool initializeDesktopSizes(SDL_Window** window_pointer) {
         SDL_DisplayID current_display_id = SDL_GetPrimaryDisplay();

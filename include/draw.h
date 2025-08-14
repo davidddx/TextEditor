@@ -35,5 +35,8 @@ bool drawDebugInfo(SDL_Renderer* renderer, SDL_Texture* texture,
                 DebugInfo* debug_info, color text_color); */ 
 bool drawDebugInfo(TextDrawingInfo* text_drawing_info, 
                 DebugInfo* debug_info);
-
+bool drawText(TextDrawingInfo* text_drawing_info, 
+                char* text);
+bool drawTextAtTopMiddle(TextDrawingInfo* draw_info, 
+                char* text);
 #endif
