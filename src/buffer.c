@@ -11,18 +11,25 @@ unsigned int MAX_LINE_BUFFER_NUM = 1000;
 unsigned int MAX_NUM_LOADED_BUFFERS = 10;
 int NUM_LOADED_BUFFERS = 0;
 
-void logBufferInfo(GapBuffer* buffer) 
-{
-        SDL_Log("buffer starting line number: %lld", buffer->starting_line_number);
-        SDL_Log("buffer ending line number: %lld", buffer->ending_line_number);
-        Line* current_line = buffer->lines[buffer->lines_index];
-        char* str_to_print = SDL_malloc(sizeof(char) * (current_line->arr_size + 1));
-        SDL_memcpy(str_to_print, current_line, sizeof(char) * current_line->arr_size);
-        str_to_print[current_line->arr_size] = '\0';
-        SDL_Log("current_line: %s(END)", str_to_print);
-        SDL_free(str_to_print);
+void destroyLine(Line* line) {
+        SDL_free(line->arr);
+        SDL_free(line);
 }
+
+void destroyGapBuffer(GapBuffer* buffer) {
+        for(int i = 0; i < buffer->lines_capacity; ++i) {
+                destroyLine(buffer->lines[i]);
+        }
+        SDL_free(buffer);
+}
+
+
+
 void logGap(Gap* gap) {
+        if(gap == NULL) {
+                SDL_Log("gap=NULL");
+                return;
+        }
         SDL_Log("gap=(start_position: %d, end_position: %d, size: %d)", 
                         gap->start_position, gap->end_position, gap->size);
 }
@@ -33,6 +40,27 @@ void logLine(Line* line) {
         SDL_Log("line info\n\tarr: (START)%s(END)\n\tsize: %d\n\tcapacity: %d", line_str, line->arr_size, line->arr_capacity);
         SDL_free(line_str);
 }
+
+void logBufferInfo(GapBuffer* buffer) 
+{
+        SDL_Log("\tlogging buffer info...");
+        SDL_Log("buffer starting line number: %lld", buffer->starting_line_number);
+        SDL_Log("buffer ending line number: %lld", buffer->ending_line_number);
+        Line* current_line = buffer->lines[buffer->lines_index];
+        SDL_Log("lines index: %d", buffer->lines_index);
+        SDL_Log("current_line");
+        logLine(current_line);
+        SDL_Log("\tlogging buffer info done");
+}
+
+void logBufferText(GapBuffer* buffer) 
+{
+        for(int i = buffer->starting_line_number; i <= buffer->ending_line_number; ++i) {
+                SDL_Log("line %d", i);
+                logLine(buffer->lines[i - buffer->starting_line_number]);
+        }
+}
+
 Line* createLine(char* str) 
 {
         Line* rv = SDL_malloc(sizeof(Line));
@@ -64,7 +92,7 @@ Gap* createGap(int start_position, int end_position) {
 
 // function assumes that there is no gap currently i.e. the former gap has been removed..
 bool insertGap(Line* line, Gap* new_gap) {
-        if(new_gap->start_position >= line->arr_size) {
+        if(new_gap->start_position > line->arr_size) {
                 SDL_Log("could not insert gap: gap start position %d is greater than line arr size %d", new_gap->start_position, line->arr_size);
                 return false;
         }
@@ -75,8 +103,6 @@ bool insertGap(Line* line, Gap* new_gap) {
         // best way to understand this code is using an example with len(arr) = 10
         // inserting gap start=1, end=3 to arr[0:9]
         // turns arr[0:9] to arr[0:12] = arr[0] + gap_space + gap_space + gap_space + arr[1:9]
-        SDL_Log("line before");
-        //logLine(line);
         char* new_str = SDL_malloc(sizeof(char) * line->arr_capacity); 
         SDL_memcpy(new_str, line->arr, sizeof(char) * new_gap->start_position); 
         char* new_str_at_gap = new_str + new_gap->start_position;
@@ -85,15 +111,11 @@ bool insertGap(Line* line, Gap* new_gap) {
         int last_index = new_gap->size + line->arr_size - 1;
         int right_end_size =  last_index - (new_gap->end_position + 1) + 1;
         
-        SDL_Log("right end size: %d", right_end_size);
         SDL_memcpy(new_str_after_gap, line->arr + new_gap->start_position, sizeof(char) * right_end_size);
         //logLine(line);
         line->arr_size += new_gap->size;
-        SDL_Log("line after");
         SDL_free(line->arr);
         line->arr = new_str;
-        SDL_Log("line_arr[%d]: %c", line->arr_size - 1, line->arr[line->arr_size - 1]);
-        //logLine(line);
         return true;
 }
 
@@ -111,49 +133,52 @@ void removeGap(Line* line, Gap* gap) {
         line->arr_size = line->arr_size - gap->size; 
 }
 
-void moveCursor(GapBuffer* gap_buffer, Gap* gap, unsigned long long line_number, 
-                int string_position) 
-{
-        if(line_number != gap_buffer->lines_index + 1 || 
-                        string_position > CURRENT_GAP->end_position || 
-                        string_position < CURRENT_GAP->start_position) 
-        {
-                removeGap(gap_buffer->lines[gap_buffer->lines_index], CURRENT_GAP);
-        }
-        if(gap_buffer->ending_line_number > line_number) {
-                // line number less than this buffer's starting line number..
-                line_number = gap_buffer->ending_line_number;
-
-        }
-        if(gap_buffer->starting_line_number < line_number) {
-                // line number greater than this buffer's ending line number..
-                line_number = gap_buffer->starting_line_number;
-        }
-        Line* current_line = gap_buffer->lines[line_number - gap_buffer->starting_line_number];
-        if(string_position < 0) {
-                string_position = 0;
-        }
-        if(string_position >= current_line->arr_size) {
-                // bounded above by current_line->arr_size..
-                string_position = current_line->arr_size - 1;
-        }
-        // modify the gap in the string.
-        if(string_position > gap->end_position) {
-
-
-        }
-        else if (string_position < gap->start_position) {
-
-        }
-        else {
-
-        }
-        //moveGap(current_line, CURRENT_GAP);
+int getCurrentLineNumber(GapBuffer* gap_buffer) {
+        return gap_buffer->starting_line_number + gap_buffer->lines_index; 
 }
 
-GapBuffer* createGapBuffer(Line** lines, int lines_size) 
+// moves gap within stuff.
+void moveCursor(GapBuffer* gap_buffer, Gap** prev_gap, 
+                unsigned long long line_number, 
+                int line_position, Gap** new_gap) 
 {
-        if(lines == NULL) {
+        // line number is the line number, line position is the position within the Line struct.
+        if(gap_buffer->starting_line_number > line_number 
+                        || gap_buffer->ending_line_number < line_number) {
+                *new_gap = NULL;
+                return;
+        }
+        if(line_number == getCurrentLineNumber(gap_buffer) && 
+                        line_position == (*prev_gap)->start_position) 
+        {
+                *new_gap = createGap((*prev_gap)->start_position, (*prev_gap)->end_position);
+                return;
+        }
+        removeGap(gap_buffer->lines[gap_buffer->lines_index], *prev_gap);       
+        Line* current_line = gap_buffer->lines[line_number - gap_buffer->starting_line_number];
+        if(line_position < 0) { 
+                // keep line position >= 0
+                line_position = 0;
+        }
+        if(line_position > current_line->arr_size) {
+                // keep line position <= current_line->arr_size 
+                line_position = current_line->arr_size;
+        }
+        Gap* gap_to_insert = createGap(line_position, line_position + MAX_GAP_SIZE - 1);
+        insertGap(current_line, gap_to_insert); 
+        *new_gap = gap_to_insert;
+
+}
+
+GapBuffer* createGapBuffer(Line** lines, int lines_size, 
+                unsigned long long starting_line_number) 
+{
+        if(lines_size > MAX_LINE_BUFFER_NUM) 
+        {
+                SDL_Log("cannot fit all these lines into one buffer: lines_size = %d but MAX_LINE_BUFFER_NUM = %d", lines_size, MAX_LINE_BUFFER_NUM);
+        }
+        if(lines == NULL) 
+        {
                 GapBuffer* buffer = SDL_malloc(sizeof(GapBuffer));
                 // allocating memory to lines in gap buffer
                 Line** buffer_lines = SDL_malloc(sizeof(Line*) * MAX_LINE_BUFFER_NUM);
@@ -168,7 +193,22 @@ GapBuffer* createGapBuffer(Line** lines, int lines_size)
                 buffer->lines_capacity = MAX_LINE_BUFFER_NUM;
                 return buffer;
         }
-        return NULL;
+        GapBuffer* buffer = SDL_malloc(sizeof(GapBuffer));
+        buffer->starting_line_number = starting_line_number;
+        buffer->ending_line_number = starting_line_number + lines_size - 1;
+        buffer->lines_index = 0;
+        buffer->lines_capacity = MAX_LINE_BUFFER_NUM;
+        Line** buffer_lines = SDL_malloc(sizeof(Line*) * MAX_LINE_BUFFER_NUM);
+        buffer->lines = buffer_lines;
+        for(int i = 0; i < lines_size; ++i) {
+                buffer_lines[i] = lines[i]; 
+        }
+        for(int i = lines_size; i < MAX_LINE_BUFFER_NUM; ++i) 
+        {
+                Line* line = createLine(NULL);
+                buffer_lines[i] = line;
+        }
+        return buffer;
 }
 
 bool initializeBuffer(FILE* file) 
@@ -179,7 +219,7 @@ bool initializeBuffer(FILE* file)
                 // number of loaded buffers is 1.
                 LOADED_BUFFERS = SDL_malloc(sizeof(GapBuffer*));
                 NUM_LOADED_BUFFERS = 1;
-                GapBuffer* initial_buffer = createGapBuffer(NULL, 0);
+                GapBuffer* initial_buffer = createGapBuffer(NULL, 0, 0);
                 CURRENT_BUFFER = initial_buffer;
                 CURRENT_GAP = SDL_malloc(sizeof(Gap));
                 CURRENT_GAP->start_position = 0;
@@ -191,19 +231,6 @@ bool initializeBuffer(FILE* file)
         return true;
 }
 
-bool destroyBuffer(GapBuffer* buffer) 
-{
-        if(buffer == NULL) {
-                return false;
-        }
-        SDL_free(buffer);
-        for(int i = 0; i < buffer->ending_line_number - buffer->starting_line_number; ++i) {
-                SDL_free(buffer->lines[i]);
-        }
-        SDL_free(buffer->lines);
-        return true;
-}
-
 bool destroyAllBuffers() {
         if(CURRENT_BUFFER == NULL) {
                 return false;
@@ -212,7 +239,7 @@ bool destroyAllBuffers() {
                 if(LOADED_BUFFERS[i] == NULL) {
                         return false;
                 }
-                SDL_free(LOADED_BUFFERS[i]);
+                destroyGapBuffer(LOADED_BUFFERS[i]);
         }
         return true;
 }
@@ -230,50 +257,15 @@ void testRemoveGap() {
         SDL_Log("testing remove gap.");
         SDL_Log("test #1.");
         Gap* gap;
-        /*
-        int test_arr_capacity = 500;
-        char* line_arr = SDL_malloc(sizeof(char) * test_arr_capacity);
-        Line* line = SDL_malloc(sizeof(Line));
-        line->arr_capacity = test_arr_capacity;
-        line_arr[0] = 'a';
-        line_arr[1] = 'a';
-        line_arr[2] = 'a';
-        line_arr[3] = 'a';
-        line_arr[4] = 'a';
-        line_arr[5] = 'a';
-        line_arr[6] = ' ';
-        line->arr_size = 7;
-        line->arr = line_arr;
-        */
         Line* line = createLine("aaaaaa ");
         gap = createGap(6, 6);
-        /*
-        gap->start_position = 6;
-        gap->end_position = 6;
-        gap->size = 1;
-        */
         singleTestRemoveGap(line, gap);
         SDL_free(line->arr);
         SDL_free(gap);
         SDL_free(line);
         SDL_Log("test #2.");
-        /*
-        char* test_str = "bbbb    AAAA"; 
-        line_arr = SDL_malloc(sizeof(char) * test_arr_capacity);
-        SDL_memcpy(line_arr, test_str, sizeof(char) * SDL_strlen(test_str));
-        line = SDL_malloc(sizeof(Line));
-        line->arr = line_arr;
-        line->arr_size = SDL_strlen(test_str);
-        line->arr_capacity = test_arr_capacity;
-        */
         line = createLine("bbbb    AAAA");
-        //gap = SDL_malloc(sizeof(Gap));
         gap = createGap(4,7);
-        /*
-        gap->start_position = 4; 
-        gap->end_position = 7;
-        gap->size = 4;
-        */
         singleTestRemoveGap(line, gap);
         SDL_free(line->arr);
         SDL_free(gap);
@@ -281,18 +273,14 @@ void testRemoveGap() {
         SDL_Log("Remove Gap test finished");
 }
 
-void testMoveCursor() {
-        SDL_Log("testing moveCursor");
-        SDL_Log("move cursor test finished");
-}
 
 void testInitializeBuffer() {
         // first testing with file=NULL
-        SDL_Log("testing initialize buffer");
+        SDL_Log("==testing initialize buffer==");
         if(initializeBuffer(NULL)) {
                 logBufferInfo(CURRENT_BUFFER);
                 destroyAllBuffers();
-                SDL_Log("buffer initialized, test finished");
+                SDL_Log("==buffer initialized, test finished==");
         }
 }
 
@@ -324,16 +312,52 @@ void testInsertGap() {
         Line* line3 = createLine("line3");
         SDL_Log("line before");
         logLine(line3);
+        SDL_Log("gap");
         Gap* gap3 = createGap(0, 5);
         insertGap(line3, gap3);
+        logGap(gap3);
         SDL_Log("line after");
         logLine(line3);
         SDL_Log("===test 3 finished===");
         SDL_Log("===test 4===");
         Line* line4 = createLine("line4");
-        Gap* gap4 = createGap(line4->arr_size, line4->arr_size + 10);
+        SDL_Log("line before");
+        logLine(line4);
+        Gap* gap4 = createGap(line4->arr_size, line4->arr_size + 9);
+        SDL_Log("gap");
+        logGap(gap4);
         insertGap(line4, gap4);
+        SDL_Log("line after");
+        logLine(line4);
+        SDL_Log("===test 4 finished===");
+        SDL_Log("===test 5===");
+        Line* line5 = createLine("");
+        Gap* gap5 = createGap(0, 10);
+        SDL_Log("line before");
+        logLine(line5);
+        SDL_Log("gap");
+        logGap(gap5);
+        insertGap(line5, gap5);
+        SDL_Log("line after");
+        logLine(line5);
+        SDL_Log("===test 5 finished===");
         SDL_Log("==insert gap test finished==");
+        SDL_free(line1->arr);
+        SDL_free(line2->arr);
+        SDL_free(line3->arr);
+        SDL_free(line4->arr);
+        SDL_free(line5->arr);
+        SDL_free(line1);
+        SDL_free(line2);
+        SDL_free(line3);
+        SDL_free(line4);
+        SDL_free(line5);
+        SDL_free(gap1);
+        SDL_free(gap2);
+        SDL_free(gap3);
+        SDL_free(gap4);
+        SDL_free(gap5);
+
 }
 
 void testCreateLine() {
@@ -353,17 +377,108 @@ void testCreateLine() {
         SDL_Log("==testing create line DONE==");
 }
 
+void testCreateGapBuffer() {
+        SDL_Log("==testing create gap buffer==");
+        SDL_Log("===test 1===");
+        Line* line1 = createLine("");
+        Line** lines1 = SDL_malloc(sizeof(Line*)); 
+        lines1[0] = line1;
+        GapBuffer* gap_buffer_1 = createGapBuffer(lines1, 1, 0);
+        logBufferText(gap_buffer_1);
+        SDL_Log("===test 1 finished===");
+
+        SDL_Log("===test 2===");
+        Line** lines2 = SDL_malloc(sizeof(Line*) * 10);
+        for(int i = 0; i < 10; ++i) {
+                char* curr_str;
+                SDL_asprintf(&curr_str, "line%d", i);
+                Line* line = createLine(curr_str);
+                lines2[i] = line;
+                SDL_free(curr_str);
+        }
+        GapBuffer* gap_buffer_2 = createGapBuffer(lines2, 10, 0);
+        logBufferText(gap_buffer_2);
+        destroyGapBuffer(gap_buffer_1);
+        destroyGapBuffer(gap_buffer_2);
+        SDL_Log("===test 2 finished===");
+        SDL_Log("==testing create gap buffer done==");
+}
+
+void singleTestMoveCursor(int test_num, 
+                GapBuffer* buff, Gap* gap, 
+                int line_position, 
+                unsigned long long line_number) 
+{
+        SDL_Log("===test %d===", test_num);
+        insertGap(buff->lines[buff->lines_index], gap);
+        Gap* new_gap = createGap(0, 0);
+        SDL_Log(" before ");
+        logGap(gap);
+        logBufferText(buff);
+        moveCursor(buff, &gap, line_number, line_position, &new_gap);
+        SDL_Log(" after ");
+        logGap(new_gap);
+        logBufferText(buff);
+        logBufferInfo(buff);
+        if(new_gap != NULL) {
+                SDL_free(new_gap);
+        }
+        SDL_Log("===test %d finished===", test_num);
+}
+
+void testMoveCursor() {
+        SDL_Log("==testing move cursor==");
+        int lines_size = 10;
+        Line** lines = SDL_malloc(sizeof(Line*) * lines_size);
+        for(int i = 0; i < lines_size; ++i) {
+                char* s = SDL_malloc(sizeof(char) * 20);
+                SDL_asprintf(&s, "line%d", i);
+                lines[i] = createLine(s); 
+                SDL_free(s);
+        }
+        GapBuffer* buff1 = createGapBuffer(lines, lines_size, 0);
+        int beginning_of_gap = 1;
+        Gap* gap1 = createGap(beginning_of_gap, beginning_of_gap + MAX_GAP_SIZE - 1);
+        singleTestMoveCursor(1, buff1, gap1, 0, 0);
+        destroyGapBuffer(buff1);
+        SDL_free(gap1);
+        lines = SDL_malloc(sizeof(Line*) * lines_size);
+        for(int i = 0; i < lines_size; ++i) {
+                char* s = SDL_malloc(sizeof(char) * 20);
+                SDL_asprintf(&s, "line%d", i);
+                lines[i] = createLine(s); 
+                SDL_free(s);
+        }
+        GapBuffer* buff2 = createGapBuffer(lines, lines_size, 0);
+        beginning_of_gap = 4;
+        Gap* gap2 = createGap(beginning_of_gap, beginning_of_gap + MAX_GAP_SIZE - 1);
+        buff2->lines_index = 3;
+        singleTestMoveCursor(2, buff2, gap2, 1, 2);
+        destroyGapBuffer(buff2);
+        SDL_free(gap2);
+        lines = SDL_malloc(sizeof(Line*) * lines_size);
+        for(int i = 0; i < lines_size; ++i) {
+                char* s = SDL_malloc(sizeof(char) * 20);
+                SDL_asprintf(&s, "line%d", i);
+                lines[i] = createLine(s); 
+                SDL_free(s);
+        }
+        GapBuffer* buff3 = createGapBuffer(lines, lines_size, 10);
+        Gap* gap3 = createGap(0, 10);
+        singleTestMoveCursor(3, buff3, gap3, gap3->start_position, 0); 
+        singleTestMoveCursor(3, buff3, gap3, gap3->start_position, 11); 
+        SDL_Log("==finished testing move cursor==");
+}
+
 void testBufferFunctions() {
         testRemoveGap();
-        testInitializeBuffer();
         testCreateLine();
         testInsertGap();
+        testCreateGapBuffer();
+        testInitializeBuffer();
         testMoveCursor();
         SDL_Log("buffer functions test finished");
 }
-
-
-
 
 bool updateBuffer(TextDrawingInfo* text_drawing_info) 
 {
