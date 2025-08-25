@@ -41,6 +41,19 @@ void logLine(Line* line) {
         SDL_free(line_str);
 }
 
+void logLineWithoutGap(Line* line, Gap* gap) {
+        char* line_to_print = SDL_malloc(sizeof(char) * (line->arr_size + 1));
+        SDL_memcpy(line_to_print, 
+                        line->arr, 
+                        sizeof(char) * gap->start_position);
+        SDL_memcpy(line_to_print + gap->start_position, 
+                        line->arr + gap->end_position + 1, 
+                        sizeof(char) * (line->arr_size - gap->end_position));
+        line_to_print[line->arr_size - gap->size] = '\0';
+        SDL_Log("line without gap: (START)%s(END)", line_to_print);
+        SDL_free(line_to_print);
+}
+
 void logBufferInfo(GapBuffer* buffer) 
 {
         SDL_Log("\tlogging buffer info...");
@@ -117,6 +130,33 @@ bool insertGap(Line* line, Gap* new_gap) {
         SDL_free(line->arr);
         line->arr = new_str;
         return true;
+}
+
+bool insertCharacter(Line* line, char c, Gap** gap_ptr, 
+                Gap** new_gap_ptr) {
+        if((*gap_ptr)->end_position > line->arr_size || (*gap_ptr)->start_position < 0) {
+                SDL_Log("cannot insert character: invalid gap.");
+                SDL_Log("printing gap and line info below");
+                logGap(*gap_ptr);
+                logLine(line);
+                return false;
+        }
+        
+        char* arr = line->arr;
+        arr[(*gap_ptr)->start_position] = c;
+        ((*gap_ptr)->start_position)++;
+        ((*gap_ptr)->size)--;
+        // check if new gap needed.
+        if((*gap_ptr)->size <= 0) {
+                Gap* new_gap = createGap((*gap_ptr)->start_position, 
+                                (*gap_ptr)->start_position + MAX_GAP_SIZE);
+                *new_gap_ptr = new_gap;
+        }
+        else {
+                *new_gap_ptr = *gap_ptr;
+        }
+        return true;
+
 }
 
 void removeGap(Line* line, Gap* gap) {
@@ -465,9 +505,37 @@ void testMoveCursor() {
         }
         GapBuffer* buff3 = createGapBuffer(lines, lines_size, 10);
         Gap* gap3 = createGap(0, 10);
-        singleTestMoveCursor(3, buff3, gap3, gap3->start_position, 0); 
-        singleTestMoveCursor(3, buff3, gap3, gap3->start_position, 11); 
+        //singleTestMoveCursor(3, buff3, gap3, gap3->start_position, 0); 
+        singleTestMoveCursor(3, buff3, gap3, gap3->start_position, 30); 
         SDL_Log("==finished testing move cursor==");
+}
+
+// params: string, gap start, gap size.
+void runInsertCharacterTest(int test_num, char* str, char c, int gap_start, int gap_size) {
+        SDL_Log("===test %d===", test_num);
+        SDL_Log("params: str:%s, char:%c, gap_start:%d, gap_size:%d", str, c, gap_start, gap_size);
+        Line* line = createLine(str);
+        Gap* gap = createGap(gap_start, gap_start + gap_size - 1);
+        insertGap(line, gap);
+        SDL_Log("before:");
+        logLine(line);
+        logGap(gap);
+        SDL_Log("character to insert: %c", c); 
+        Gap* new_gap;
+        insertCharacter(line, c, &gap, &new_gap);
+        SDL_Log("after:");
+        logLine(line);
+        logGap(new_gap);
+        logLineWithoutGap(line, new_gap);
+        SDL_Log("===test %d done===", test_num);
+}
+
+void testInsertCharacter() {
+        runInsertCharacterTest(1, "test1isnow", 'a', 0, 11);
+        runInsertCharacterTest(2, "test2isnow", '1', 200, 13);
+        runInsertCharacterTest(3, "test3isnow", '4', 6, 17);
+        runInsertCharacterTest(4, "test4isnow", 'z', 3, 12);
+        runInsertCharacterTest(5, "test5isnow", 'x', 9, 100);
 }
 
 void testBufferFunctions() {
@@ -477,6 +545,7 @@ void testBufferFunctions() {
         testCreateGapBuffer();
         testInitializeBuffer();
         testMoveCursor();
+        testInsertCharacter();
         SDL_Log("buffer functions test finished");
 }
 
