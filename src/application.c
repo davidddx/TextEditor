@@ -9,7 +9,7 @@
 void textEditorApplicationLoop(SDL_Window* window, 
                 SDL_Renderer* renderer, TTF_TextEngine* text_engine) 
 {
-        if(TESTING) 
+        if(TESTING_BUFFER) 
         {
                 testBufferFunctions();
         }
@@ -78,7 +78,8 @@ void textEditorApplicationLoop(SDL_Window* window,
         SDL_SetRenderTarget(renderer, NULL);
         bool running = true;
         SDL_StartTextInput(window);
-        char* curr_str = SDL_malloc(sizeof(char) * MAX_TEXT_LENGTH_PER_FRAME);
+        ModifiedChar* curr_chars = SDL_malloc(sizeof(ModifiedChar) * MAX_TEXT_LENGTH_PER_FRAME);
+        int curr_chars_size = 0;
         while(running) {
                 if(start_time == 0) {
                         start_time = SDL_GetTicks();
@@ -94,6 +95,7 @@ void textEditorApplicationLoop(SDL_Window* window,
                 }
 
                 SDL_Event current_event;
+                ModifiedChar key_input;
                 while(SDL_PollEvent(&current_event)) {
                         switch(current_event.type) {
                                 case SDL_EVENT_QUIT:
@@ -120,11 +122,11 @@ void textEditorApplicationLoop(SDL_Window* window,
                                         application_texture = SDL_CreateTexture(renderer, window_pixel_fmt, 
                                                         SDL_TEXTUREACCESS_TARGET, window_width, 
                                                         window_height);
-        SDL_SetRenderTarget(renderer, application_texture);
-        SDL_SetRenderDrawColor(renderer, 0,0,0,0);
-        SDL_RenderFillRect(renderer, NULL);
-        SDL_RenderClear(renderer);
-        SDL_SetRenderTarget(renderer, NULL);
+                                        SDL_SetRenderTarget(renderer, application_texture);
+                                        SDL_SetRenderDrawColor(renderer, 0,0,0,0);
+                                        SDL_RenderFillRect(renderer, NULL);
+                                        SDL_RenderClear(renderer);
+                                        SDL_SetRenderTarget(renderer, NULL);
                                         text_editor_object_drawing_info.texture = application_texture;
                                         text_editor_object_drawing_info.renderer = renderer;
                                         text_editor_text_drawing_info.text_engine = text_engine;
@@ -141,16 +143,59 @@ void textEditorApplicationLoop(SDL_Window* window,
                                 case SDL_EVENT_TEXT_INPUT:
                                         // text input event means the event has text.
                                         // refer to struct SDL_TextInputEvent.
-                                        SDL_Log("Input: %s", current_event.text.text);
+                                        key_input = initializeModifiedChar();
+                                        key_input.is_ascii = true; 
+                                        key_input.ascii = *(current_event.text.text);
+                                        curr_chars[curr_chars_size] = key_input;
+                                        ++curr_chars_size;
+                                        break;
+                                case SDL_EVENT_KEY_DOWN:
+                                        // fired on any keypress.
+                                        key_input = initializeModifiedChar();
+                                        SDL_KeyboardEvent key_event = current_event.key;
+                                        SDL_Keycode key_code = key_event.key;
+                                        if(key_code == SDLK_UP) {
+                                                key_input.arrow_key = ARROW_KEY_UP; 
+                                        }
+                                        else if(key_code == SDLK_DOWN) {
+                                                key_input.arrow_key = ARROW_KEY_DOWN; 
+                                        }
+                                        else if(key_code == SDLK_LEFT) {
+                                                key_input.arrow_key = ARROW_KEY_LEFT; 
+                                        }
+                                        else if(key_code == SDLK_RIGHT) {
+                                                key_input.arrow_key = ARROW_KEY_RIGHT; 
+                                        }
+                                        else if(key_code == SDLK_LSHIFT) {
+                                                key_input.modifier_key = MODIFIER_KEY_SHIFT; 
+                                        }
+                                        else if(key_code == SDLK_LCTRL) {
+                                                key_input.modifier_key = MODIFIER_KEY_CTRL; 
+                                        }
+                                        else if(key_code == SDLK_LALT) {
+                                                key_input.modifier_key = MODIFIER_KEY_ALT; 
+                                        }
+                                        else if(key_code == SDLK_BACKSPACE) {
+                                                key_input.modifier_key = MODIFIER_KEY_BACKSPACE; 
+                                        }
+                                        else {
+                                                break;
+                                        }
+                                        curr_chars[curr_chars_size] = key_input;
+                                        ++curr_chars_size;
                                         break;
                         }
                 }
+                BufferUpdateInfo buffer_update_info;
+                buffer_update_info.text_draw_info = &text_editor_text_drawing_info; 
+                buffer_update_info.characters_pressed = curr_chars;
+                buffer_update_info.characters_pressed_size = curr_chars_size;
                 application_debug_info.fps = fps;
                 SDL_RenderClear(renderer);
                 SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g,
                                 BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
-                updateBuffer(&text_editor_text_drawing_info);
-                
+                updateBuffer(&buffer_update_info);
+                curr_chars_size = 0;
                 if(!drawDebugInfo(&debug_text_drawing_info, &application_debug_info)) {
                         SDL_Log("Could not draw debug info: %s", SDL_GetError()); 
                 }
@@ -162,9 +207,9 @@ void textEditorApplicationLoop(SDL_Window* window,
                 SDL_RenderPresent(renderer);
                 start_time = end_time;
                 end_time = SDL_GetTicks();
-                //SDL_free(curr_str);
                 
         }
+        SDL_free(curr_chars);
  
 
 }

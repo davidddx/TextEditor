@@ -8,5 +8,5 @@ typedef struct {
         int desktop_height;
 
 } DebugInfo;
-extern bool TESTING;
+extern bool TESTING_BUFFER;
 #endif

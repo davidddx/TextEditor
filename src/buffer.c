@@ -10,6 +10,17 @@ unsigned int MAX_LINE_SIZE = 1000;
 unsigned int MAX_LINE_BUFFER_NUM = 1000;
 unsigned int MAX_NUM_LOADED_BUFFERS = 10;
 int NUM_LOADED_BUFFERS = 0;
+const char INVALID_ASCII = -1; 
+
+ModifiedChar initializeModifiedChar() {
+        ModifiedChar key_input;
+        key_input.is_ascii = false;
+        key_input.ascii = INVALID_ASCII;
+        key_input.modifier_key = NO_MODIFIER_KEY; 
+        key_input.arrow_key = NO_ARROW_KEY;
+        return key_input;
+
+}
 
 void destroyLine(Line* line) {
         SDL_free(line->arr);
@@ -23,7 +34,12 @@ void destroyGapBuffer(GapBuffer* buffer) {
         SDL_free(buffer);
 }
 
-
+void logModifiedChar(ModifiedChar ch) {
+        SDL_Log("is_ascii: %d | ", ch.is_ascii);
+        SDL_Log("ascii: %d | ", ch.ascii);
+        SDL_Log("modifier_key: %d | ", ch.modifier_key);
+        SDL_Log("arrow_key: %d | ", ch.arrow_key);
+}
 
 void logGap(Gap* gap) {
         if(gap == NULL) {
@@ -132,7 +148,9 @@ bool insertGap(Line* line, Gap* new_gap) {
         return true;
 }
 
-bool insertCharacter(Line* line, char c, Gap** gap_ptr, 
+// inserts character and updates the new gap after insert operation.
+bool insertCharacter(Line* line, char c, 
+                Gap** gap_ptr, 
                 Gap** new_gap_ptr) {
         if((*gap_ptr)->end_position > line->arr_size || (*gap_ptr)->start_position < 0) {
                 SDL_Log("cannot insert character: invalid gap.");
@@ -151,10 +169,36 @@ bool insertCharacter(Line* line, char c, Gap** gap_ptr,
                 Gap* new_gap = createGap((*gap_ptr)->start_position, 
                                 (*gap_ptr)->start_position + MAX_GAP_SIZE);
                 *new_gap_ptr = new_gap;
+                insertGap(line, new_gap);
         }
         else {
                 *new_gap_ptr = *gap_ptr;
         }
+        return true;
+
+}
+
+
+// same as insertCharacter but for char arr.
+bool insertCharArr(Line* line, char* arr, int arr_size, 
+                Gap** gap_ptr, Gap** new_gap_ptr) 
+{
+        Gap* curr_gap = *gap_ptr;
+        Gap* new_gap;
+        for(int i = 0; i < arr_size; ++i) 
+        {
+                if(!insertCharacter(line, arr[i], 
+                                       &curr_gap, &new_gap)) 
+                {
+                        return false;
+                }
+                if(new_gap != curr_gap) {
+                        SDL_free(curr_gap);
+                }
+                curr_gap = new_gap;
+
+        }
+        *new_gap_ptr = new_gap;
         return true;
 
 }
@@ -251,8 +295,17 @@ GapBuffer* createGapBuffer(Line** lines, int lines_size,
         return buffer;
 }
 
+int KEY_COOLDOWN_INFO_ARR_SIZE = 500; // just needs to be something higher than sizeof(char) * 8
+                                   // aka higher than nax ascii code on host os
+bool* key_down; // initialized in "initializeBuffer" func.
+bool* first_key_cooldown_done; // initialize in "initializeBuffer" func.
+unsigned long* key_last_pressed;
+
 bool initializeBuffer(FILE* file) 
 {
+        key_down = SDL_calloc(sizeof(bool), KEY_COOLDOWN_INFO_ARR_SIZE);
+        first_key_cooldown_done = SDL_calloc(sizeof(bool), KEY_COOLDOWN_INFO_ARR_SIZE); 
+        key_last_pressed = SDL_calloc(sizeof(unsigned long), KEY_COOLDOWN_INFO_ARR_SIZE);
         if(file == NULL) {
                 // new file mode:
                 // file does not currently exist so 
@@ -511,6 +564,8 @@ void testMoveCursor() {
 }
 
 // params: string, gap start, gap size.
+
+
 void runInsertCharacterTest(int test_num, char* str, char c, int gap_start, int gap_size) {
         SDL_Log("===test %d===", test_num);
         SDL_Log("params: str:%s, char:%c, gap_start:%d, gap_size:%d", str, c, gap_start, gap_size);
@@ -538,6 +593,38 @@ void testInsertCharacter() {
         runInsertCharacterTest(5, "test5isnow", 'x', 9, 100);
 }
 
+void singleTestInsertCharArr(int test_num, char* inserting_string, 
+                char* original_string, int gap_start, int gap_size) 
+{
+        SDL_Log("===test %d===", test_num);
+        SDL_Log("params: insert: %s, original: %s, gap_start: %d, gap_size: %d", 
+                        inserting_string, original_string, gap_start, gap_size);
+        Gap* gap = createGap(gap_start, gap_start + gap_size - 1); 
+        Line* line = createLine(original_string);
+        insertGap(line, gap);
+        SDL_Log("before");
+        logLineWithoutGap(line, gap);
+        logLine(line);
+        Gap* new_gap;
+        insertCharArr(line, inserting_string, strlen(inserting_string), &gap, &new_gap);
+        SDL_Log("after");
+        logLine(line);
+        logLineWithoutGap(line, new_gap);
+        SDL_free(new_gap);
+        destroyLine(line);
+        SDL_Log("===test %d finished===", test_num);
+}
+
+void testInsertCharArr() {
+        singleTestInsertCharArr(1, "INSERT", "test1", 0, 3);
+        singleTestInsertCharArr(2, "INSERT", "test2", 1, 3);
+        singleTestInsertCharArr(3, "INSERT", "test3", 2, 3);
+        singleTestInsertCharArr(4, "INSERT", "test4", 3, 3);
+        singleTestInsertCharArr(5, "INSERT", "test5", 4, 3);
+        singleTestInsertCharArr(6, "INSERT", "test6", 5, 3);
+
+}
+
 void testBufferFunctions() {
         testRemoveGap();
         testCreateLine();
@@ -546,13 +633,124 @@ void testBufferFunctions() {
         testInitializeBuffer();
         testMoveCursor();
         testInsertCharacter();
+        testInsertCharArr();
         SDL_Log("buffer functions test finished");
 }
 
-bool updateBuffer(TextDrawingInfo* text_drawing_info) 
+unsigned long backspace_last_pressed = 0;
+const unsigned long backspace_press_cooldown_1 = 100;
+const unsigned long backspace_press_cooldown_2 = 10; 
+bool backspace_down = false;
+bool first_cooldown_done = false;
+// if backspace held after cooldown 1, the cooldown is cooldown 2.
+// using this to generalize across all text keys.
+
+const unsigned long key_press_cooldown_1 = 100;
+const unsigned long key_press_cooldown_2 = 10;
+
+bool checkCooldown(char x) {
+        if(x < 0 || x >= KEY_COOLDOWN_INFO_ARR_SIZE) {
+                return true;
+        }
+        unsigned long current_cooldown;
+        if(key_down[x] && first_key_cooldown_done[x]) {
+                current_cooldown = key_press_cooldown_1;
+        }
+        else {
+                current_cooldown = key_press_cooldown_2;
+        }
+        bool on_cooldown = false;
+        unsigned long time_now = SDL_GetTicks();
+        if(time_now - current_cooldown <= key_last_pressed[x]) {
+                on_cooldown = true;
+        }
+        if(!on_cooldown) {
+                first_key_cooldown_done[x] = true;
+        }
+        return on_cooldown;
+}
+
+bool updateByKeystrokes(ModifiedChar* text_input, int text_input_size,
+                GapBuffer* buffer, Gap** initial_gap) {
+
+        if(text_input_size >= 2) {
+                SDL_Log("multiple inputs detected");
+        }
+        Line* current_line = buffer->lines[buffer->lines_index];
+        Gap* curr_gap = *initial_gap;
+        bool backspace_keystroke = false;
+        bool keystrokes[KEY_COOLDOWN_INFO_ARR_SIZE];
+        memset(keystrokes, 0, sizeof keystrokes);
+        for(int i = 0; i < text_input_size; ++i) {
+                ModifiedChar curr_char = text_input[i];
+                //logModifiedChar(curr_char);
+                if(curr_char.is_ascii) {
+                        key_down[curr_char.ascii] = true;
+                        keystrokes[curr_char.ascii] = true;
+                        if(checkCooldown(curr_char.ascii)) {
+                                continue;
+                        }
+                        Gap* new_gap;
+                        if(!insertCharacter(current_line, curr_char.ascii, &curr_gap, &new_gap)) {
+                                SDL_Log("inserting character %c did not work. will not upgrade suceeding keystrokes this frame.", curr_char.ascii);
+                                return false;
+                        }
+                        if(new_gap != curr_gap) {
+                                SDL_free(curr_gap);
+                                curr_gap = new_gap;
+                        }
+                        SDL_Log("char %c pressed", curr_char.ascii);
+                }
+                else if(curr_char.modifier_key == MODIFIER_KEY_BACKSPACE) {
+                        backspace_keystroke = true;
+                        backspace_down = true;
+                }
+                if(curr_char.modifier_key != MODIFIER_KEY_BACKSPACE) {
+                        continue;
+                }
+                
+                unsigned long current_cooldown;
+                if(backspace_down && first_cooldown_done) {
+                        current_cooldown = backspace_press_cooldown_1;
+                }
+                else {
+                        current_cooldown = backspace_press_cooldown_2;
+                }
+                bool on_cooldown = false;
+                unsigned long time_now = SDL_GetTicks();
+                if(time_now - current_cooldown <= backspace_last_pressed) {
+                        on_cooldown = true;
+                }
+
+                if(on_cooldown) {
+                        continue;
+                }
+                backspace_last_pressed = time_now;
+                first_cooldown_done = true;
+                SDL_Log("backspace pressed! removing key..."); 
+        }
+        if(!backspace_keystroke) {
+                backspace_down = false;
+                first_cooldown_done = false;
+        }
+        for(int i = 0; i < KEY_COOLDOWN_INFO_ARR_SIZE; ++i) {
+                if(keystrokes[i] == true) {
+                        continue;
+                }
+                key_down[i] = false;
+                first_key_cooldown_done[i] = false;
+        }
+        *initial_gap = curr_gap;
+
+        return true;
+        //checking backspace key pressed down.
+}
+
+bool updateBuffer(BufferUpdateInfo* update_info) 
 {
-        //logBufferInfo(CURRENT_BUFFER);
-        //testAllFunctions();
+        updateByKeystrokes(update_info->characters_pressed, 
+                        update_info->characters_pressed_size, 
+                        CURRENT_BUFFER, &CURRENT_GAP);
         return true;
 }
 

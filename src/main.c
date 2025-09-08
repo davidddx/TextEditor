@@ -3,6 +3,7 @@
 #include "logger/log_setup.h"
 #include "globals.h"
 #include "text.h"
+#include "buffer.h"
 #include <stdbool.h>
 bool initializeTextEditorApp(SDL_Window** w, SDL_Renderer** r, TTF_TextEngine** t) {
         applicationLoggingInit();
@@ -22,6 +23,9 @@ bool initializeTextEditorApp(SDL_Window** w, SDL_Renderer** r, TTF_TextEngine** 
                 return false;
         }
         SDL_Log("font initialized");
+        if(!initializeBuffer(NULL)) {
+                SDL_Log("Could not initialize buffer. Exiting app...");
+        }
         return true;
 }
 
